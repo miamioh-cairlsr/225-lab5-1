@@ -75,6 +75,7 @@ def index():
             </form>
             
             <!-- Search form -->
+            <h2>Search Contact</h>
             <form method="GET" action="/" style="margin-top: 20px;">
                 <input type="text" name="search" placeholder="Search by name or phone" value="{{ request.args.get('search', '') }}">
                 <input type="submit" value="Search">
