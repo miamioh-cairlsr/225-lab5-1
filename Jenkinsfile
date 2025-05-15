@@ -18,6 +18,13 @@ pipeline {
             }
         }
 
+        stage('Lint HTML') {
+            steps {
+                sh 'npm install htmlhint --save-dev'
+                sh 'npx htmlhint *.html'
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
                 script {
@@ -72,6 +79,19 @@ pipeline {
                 }
             }
         }
+
+        stage ("Run Security Checks") {
+            steps {
+                //                                                                 ###change the IP address in this section to your cluster IP address!!!!####
+                sh 'docker pull public.ecr.aws/portswigger/dastardly:latest'
+                sh '''
+                    docker run --user $(id -u) -v ${WORKSPACE}:${WORKSPACE}:rw \
+                    -e BURP_START_URL=http://10.48.10.143 \
+                    -e BURP_REPORT_FILE_PATH=${WORKSPACE}/dastardly-report.xml \
+                    public.ecr.aws/portswigger/dastardly:latest
+                '''
+            }
+        }
         
         stage('Remove Test Data') {
             steps {
@@ -79,6 +99,18 @@ pipeline {
                     // Run the python script to generate data to add to the database
                     def appPod = sh(script: "kubectl get pods -l app=flask -o jsonpath='{.items[0].metadata.name}'", returnStdout: true).trim()
                     sh "kubectl exec ${appPod} -- python3 data-clear.py"
+                }
+            }
+        }
+
+        stage('Deploy to Prod Environment') {
+            steps {
+                script {
+                    // Set up Kubernetes configuration using the specified KUBECONFIG
+                    //sh "ls -la"
+                    sh "sed -i 's|${DOCKER_IMAGE}:latest|${DOCKER_IMAGE}:${IMAGE_TAG}|' deployment-prod.yaml"
+                    sh "cd .."
+                    sh "kubectl apply -f deployment-prod.yaml"
                 }
             }
         }
