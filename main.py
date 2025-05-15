@@ -9,7 +9,7 @@ DATABASE = '/nfs/demo.db'
 
 def get_db():
     db = sqlite3.connect(DATABASE)
-    db.row_factory = sqlite3.Row  # This enables name-based access to columns
+    db.row_factory = sqlite3.Row  # Enable name-based access to columns
     return db
 
 def init_db():
@@ -26,9 +26,8 @@ def init_db():
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    message = ''  # Message indicating the result of the operation
+    message = ''  # Operation result message
     if request.method == 'POST':
-        # Check if it's a delete action
         if request.form.get('action') == 'delete':
             contact_id = request.form.get('contact_id')
             db = get_db()
@@ -46,11 +45,9 @@ def index():
             else:
                 message = 'Missing name or phone number.'
 
-    # Always display the contacts table
     db = get_db()
     contacts = db.execute('SELECT * FROM contacts').fetchall()
 
-    # Display the HTML form along with the contacts table
     return render_template_string('''
         <!DOCTYPE html>
         <html>
@@ -58,7 +55,7 @@ def index():
             <title>Contacts</title>
         </head>
         <body>
-            <h2>Add Contacts</h2>
+            <h2>Add Contact</h2>
             <form method="POST" action="/">
                 <label for="name">Name:</label><br>
                 <input type="text" id="name" name="name" required><br>
@@ -68,6 +65,7 @@ def index():
             </form>
             <p>{{ message }}</p>
             {% if contacts %}
+                <h2>Contact List</h2>
                 <table border="1">
                     <tr>
                         <th>Name</th>
@@ -101,8 +99,8 @@ def index():
 @app.route('/update/<int:contact_id>', methods=['GET', 'POST'])
 def update_contact(contact_id):
     db = get_db()
+    message = ''
     if request.method == 'POST':
-        # Process update form submission
         name = request.form.get('name')
         phone = request.form.get('phone')
         if name and phone:
@@ -111,12 +109,10 @@ def update_contact(contact_id):
             return redirect(url_for('index'))
         else:
             message = "Please provide both name and phone."
-    else:
-        # Show the update form pre-filled with current contact info
-        contact = db.execute('SELECT * FROM contacts WHERE id = ?', (contact_id,)).fetchone()
-        if contact is None:
-            return "Contact not found", 404
-        message = ''
+
+    contact = db.execute('SELECT * FROM contacts WHERE id = ?', (contact_id,)).fetchone()
+    if contact is None:
+        return "Contact not found", 404
 
     return render_template_string('''
         <!DOCTYPE html>
@@ -139,5 +135,5 @@ def update_contact(contact_id):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    init_db()  # Initialize the database and table
+    init_db()  # Ensure table exists
     app.run(debug=True, host='0.0.0.0', port=port)
