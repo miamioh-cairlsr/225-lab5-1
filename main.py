@@ -72,17 +72,20 @@ def index():
                     <tr>
                         <th>Name</th>
                         <th>Phone Number</th>
-                        <th>Delete</th>
+                        <th>Actions</th>
                     </tr>
                     {% for contact in contacts %}
                         <tr>
                             <td>{{ contact['name'] }}</td>
                             <td>{{ contact['phone'] }}</td>
                             <td>
-                                <form method="POST" action="/">
+                                <form method="POST" action="/" style="display:inline;">
                                     <input type="hidden" name="contact_id" value="{{ contact['id'] }}">
                                     <input type="hidden" name="action" value="delete">
                                     <input type="submit" value="Delete">
+                                </form>
+                                <form method="GET" action="{{ url_for('update_contact', contact_id=contact['id']) }}" style="display:inline;">
+                                    <input type="submit" value="Update">
                                 </form>
                             </td>
                         </tr>
@@ -94,6 +97,45 @@ def index():
         </body>
         </html>
     ''', message=message, contacts=contacts)
+
+@app.route('/update/<int:contact_id>', methods=['GET', 'POST'])
+def update_contact(contact_id):
+    db = get_db()
+    if request.method == 'POST':
+        # Process update form submission
+        name = request.form.get('name')
+        phone = request.form.get('phone')
+        if name and phone:
+            db.execute('UPDATE contacts SET name = ?, phone = ? WHERE id = ?', (name, phone, contact_id))
+            db.commit()
+            return redirect(url_for('index'))
+        else:
+            message = "Please provide both name and phone."
+    else:
+        # Show the update form pre-filled with current contact info
+        contact = db.execute('SELECT * FROM contacts WHERE id = ?', (contact_id,)).fetchone()
+        if contact is None:
+            return "Contact not found", 404
+        message = ''
+
+    return render_template_string('''
+        <!DOCTYPE html>
+        <html>
+        <head><title>Update Contact</title></head>
+        <body>
+            <h2>Update Contact</h2>
+            <form method="POST">
+                <label for="name">Name:</label><br>
+                <input type="text" id="name" name="name" value="{{ contact['name'] }}" required><br>
+                <label for="phone">Phone Number:</label><br>
+                <input type="text" id="phone" name="phone" value="{{ contact['phone'] }}" required><br><br>
+                <input type="submit" value="Update">
+            </form>
+            <p>{{ message }}</p>
+            <p><a href="{{ url_for('index') }}">Back to contacts</a></p>
+        </body>
+        </html>
+    ''', contact=contact, message=message)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
