@@ -27,6 +27,7 @@ def init_db():
 @app.route('/', methods=['GET', 'POST'])
 def index():
     message = ''  # Operation result message
+
     if request.method == 'POST':
         if request.form.get('action') == 'delete':
             contact_id = request.form.get('contact_id')
@@ -45,8 +46,17 @@ def index():
             else:
                 message = 'Missing name or phone number.'
 
+    # Handle search query parameter for GET requests
+    search_query = request.args.get('search', '').strip()
     db = get_db()
-    contacts = db.execute('SELECT * FROM contacts').fetchall()
+    if search_query:
+        like_query = f'%{search_query}%'
+        contacts = db.execute('''
+            SELECT * FROM contacts 
+            WHERE name LIKE ? OR phone LIKE ?
+        ''', (like_query, like_query)).fetchall()
+    else:
+        contacts = db.execute('SELECT * FROM contacts').fetchall()
 
     return render_template_string('''
         <!DOCTYPE html>
@@ -63,6 +73,16 @@ def index():
                 <input type="text" id="phone" name="phone" required><br><br>
                 <input type="submit" value="Submit">
             </form>
+            
+            <!-- Search form -->
+            <form method="GET" action="/" style="margin-top: 20px;">
+                <input type="text" name="search" placeholder="Search by name or phone" value="{{ request.args.get('search', '') }}">
+                <input type="submit" value="Search">
+                {% if request.args.get('search') %}
+                    <a href="{{ url_for('index') }}">Clear</a>
+                {% endif %}
+            </form>
+            
             <p>{{ message }}</p>
             {% if contacts %}
                 <h2>Contact List</h2>
